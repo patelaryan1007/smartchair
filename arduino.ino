@@ -86,7 +86,7 @@ void loop() {
         HTTPClient http;
         http.begin(ALERT_URL);
         http.addHeader("Content-Type", "application/json");
-        http.POST("{}");  // Empty JSON payload since we just need to trigger the alert
+        http.POST("{\"alert\":true}");  // Send alert flag
         http.end();
         Serial.println("🚨 Alert sent to server - sitting too long!");
       }

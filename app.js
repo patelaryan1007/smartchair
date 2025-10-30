@@ -15,6 +15,9 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
+// Variable to track pending alert
+let pendingAlert = false;
+
 const DATA_FILE = path.join(__dirname, 'data.json');
 const PORT = process.env.PORT || 3000;
 
@@ -184,6 +187,15 @@ app.get('/', (req, res) => {
         document.getElementById('time').innerText = (data.sitting_time != null) ? data.sitting_time : '—';
         document.getElementById('last').innerText = data.timestamp || '—';
         document.getElementById('posture').className = data.posture === 'Bad' ? 'value bad' : 'value good';
+        
+        // Check for alerts during regular updates
+        const alertRes = await fetch('/check-alert');
+        if (alertRes.ok) {
+          const alertData = await alertRes.json();
+          if (alertData.pending) {
+            document.getElementById('alert').style.display = 'block';
+          }
+        }
       } catch (err) {
         console.error(err);
       }
@@ -238,22 +250,7 @@ app.get('/', (req, res) => {
       alertPopup.style.display = 'none';
     });
 
-    // Check for alerts
-    async function checkAlerts() {
-      try {
-        const res = await fetch('/alert');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.show) {
-          alertPopup.style.display = 'block';
-        }
-      } catch (err) {
-        console.error('Alert check failed:', err);
-      }
-    }
-
-    // Check for alerts every 5 seconds
-    setInterval(checkAlerts, 5000);
+    // No need for periodic alert checks since Arduino will trigger them
   </script>
 </body>
 </html>`);
@@ -297,12 +294,19 @@ app.get('/history', (req, res) => {
 // Provide CSV download of history
 // Handle alert notifications
 app.post('/alert', (req, res) => {
+  pendingAlert = true;  // Set the alert flag
   res.json({ status: 'ok', received: true });
 });
 
-// Check alert status
-app.get('/alert', (req, res) => {
-  res.json({ show: true });
+// Check if there's a pending alert
+app.get('/check-alert', (req, res) => {
+  res.json({ pending: pendingAlert });
+});
+
+// Clear the pending alert
+app.post('/clear-alert', (req, res) => {
+  pendingAlert = false;
+  res.json({ status: 'ok' });
 });
 
 app.get('/download.csv', (req, res) => {
