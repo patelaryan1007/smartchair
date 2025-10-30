@@ -69,6 +69,8 @@ app.get('/', (req, res) => {
     .wrap{max-width:980px;width:100%;}
     header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
     h1{font-size:20px;margin:0;}
+    .alert-popup{position:fixed;top:20px;right:20px;background:#ff4444;color:white;padding:15px 40px 15px 15px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:none;z-index:1000;}
+    .alert-popup .close{position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:20px;}
     .grid{display:flex;flex-wrap:wrap;gap:12px;}
     .card{background:#fff;padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(20,30,60,0.06);min-width:200px;flex:1;}
     .value{font-size:28px;font-weight:600;margin-top:8px;}
@@ -84,6 +86,10 @@ app.get('/', (req, res) => {
   </style>
 </head>
 <body>
+  <div id="alert" class="alert-popup">
+    You've been sitting for too long! Take a break.
+    <span class="close">&times;</span>
+  </div>
   <div class="wrap">
     <header>
       <h1>🪑 Smart Chair — Live Dashboard</h1>
@@ -225,6 +231,29 @@ app.get('/', (req, res) => {
     // initial
     fetchLatest();
     fetchHistoryAndRender();
+
+    // Alert popup functionality
+    const alertPopup = document.getElementById('alert');
+    alertPopup.querySelector('.close').addEventListener('click', () => {
+      alertPopup.style.display = 'none';
+    });
+
+    // Check for alerts
+    async function checkAlerts() {
+      try {
+        const res = await fetch('/alert');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.show) {
+          alertPopup.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('Alert check failed:', err);
+      }
+    }
+
+    // Check for alerts every 5 seconds
+    setInterval(checkAlerts, 5000);
   </script>
 </body>
 </html>`);
@@ -266,6 +295,16 @@ app.get('/history', (req, res) => {
 });
 
 // Provide CSV download of history
+// Handle alert notifications
+app.post('/alert', (req, res) => {
+  res.json({ status: 'ok', received: true });
+});
+
+// Check alert status
+app.get('/alert', (req, res) => {
+  res.json({ show: true });
+});
+
 app.get('/download.csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="smart-chair-history.csv"');
